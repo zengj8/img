@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="origin" />
+    <meta name="description" content="该在已有的quartz 定时任务， 控制这些jobs的执行顺序.&#xD;&#xA;quartz插件,quartz串行执行job,串行调度" />
+    <meta property="og:description" content="该在已有的quartz 定时任务， 控制这些jobs的执行顺序.&#xD;&#xA;quartz插件,quartz串行执行job,串行调度" />
+    <meta http-equiv="Cache-Control" content="no-transform" />
+    <meta http-equiv="Cache-Control" content="no-siteapp" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>quartz插件——实现任务之间的串行调度 - benzero - 博客园</title>
+    <link id="favicon" rel="shortcut icon" href="//common.cnblogs.com/favicon.svg" type="image/svg+xml" />
+    
+    <link rel="stylesheet" href="/css/blog-common.min.css?v=IFB5beBNkIuYTO4VCt24IJmwbGFpZJhA6maXI7NJQSk" />
+    <link id="MainCss" rel="stylesheet" href="/skins/sea/bundle-sea.min.css?v=oF2SvRIFQNTLcLgn66nPy-bOeZ-5NDS8tPrc0Kt42ys" />
+    
+    <link id="mobile-style" media="only screen and (max-width: 767px)" type="text/css" rel="stylesheet" href="/skins/sea/bundle-sea-mobile.min.css?v=hwOMApLxOSzs6OyhZ7e8nLo8ijIJV8spG9Uwn_yefqQ" />
+    
+    <link type="application/rss+xml" rel="alternate" href="https://www.cnblogs.com/surprizeFuture/rss" />
+    <link type="application/rsd+xml" rel="EditURI" href="https://www.cnblogs.com/surprizeFuture/rsd.xml" />
+    <link type="application/wlwmanifest+xml" rel="wlwmanifest" href="https://www.cnblogs.com/surprizeFuture/wlwmanifest.xml" />
+    <script>
+        var currentBlogId = 231074;
+        var currentBlogApp = 'surprizeFuture';
+        var cb_enable_mathjax = false;
+        var isLogined = false;
+        var isBlogOwner = false;
+        var skinName = 'sea';
+        var visitorUserId = '';
+    </script>
+        <script>
+            var currentPostDateAdded = '2015-08-28 06:02';
+        </script>
+    <script src="https://common.cnblogs.com/scripts/jquery-2.2.0.min.js"></script>
+    <script src="/js/blog-common.min.js?v=kKx3DBtpvO8r97BzPmHJseQ10fGHkI-ZwMh4FA0eEd0"></script>
+    
+    
+    
+</head>
+<body class="has-navbar">
+    <a name="top"></a> 
+    <div id="top_nav" class="navbar">
+        <nav id="nav_main" class="navbar-main">
+            <ul id="nav_left" class="navbar-list navbar-left">
+                <li class="navbar-branding"><a href="https://www.cnblogs.com/" title="开发者的网上家园"><img src="/images/logo.svg?v=R9M0WmLAIPVydmdzE2keuvnjl-bPR7_35oHqtiBzGsM" alt="博客园Logo" /></a></li>
+                <li><a href="/" onclick="ga('send', 'event', 'Link', 'click', 'skin-navbar-sitehome')">首页</a></li>
+                <li><a href="https://news.cnblogs.com/" onclick="ga('send', 'event', 'Link', 'click', 'skin-navbar-news')">新闻</a></li>
+                <li><a href="https://q.cnblogs.com/" onclick="ga('send', 'event', 'Link', 'click', 'skin-navbar-q')">博问</a></li>
+                <li><a id="nav_brandzone" href="https://brands.cnblogs.com/" onclick="ga('send', 'event', 'Link', 'click', 'skin-navbar-brands')">专区</a></li>
+                <li><a href="https://ing.cnblogs.com/" onclick="ga('send', 'event', 'Link', 'click', 'skin-navbar-ing')">闪存</a></li>
+                <li><a href="https://edu.cnblogs.com/" onclick="ga('send', 'event', 'Link', 'click', 'skin-navbar-edu')">班级</a></li>
+            </ul>
+            <ul id="nav_right" class="navbar-list navbar-right">
+                <li>
+                    <form id="zzk_search" class="navbar-search" action="https://zzk.cnblogs.com/s" method="get">
+                        <input name="w" id="zzk_search_input" placeholder="代码改变世界" type="text" tabindex="3" />
+                        <button type="submit" id="zzk_search_button">
+                            <img src="/images/aggsite/search.svg" alt="搜索" />
+                        </button>
+                    </form>
+                </li>
+                <li id="navbar_login_status" class="navbar-list">
+                    <a id="navblog-myblog-icon" class="navbar-user-info navbar-blog" href="https://passport.cnblogs.com/GetBlogApplyStatus.aspx" alt="我的博客" title="我的博客">
+                        <img id="myblog_icon" class="navbar-icon" src="/images/aggsite/myblog.svg" alt="我的博客" />
+                    </a>
+                    <a class="navbar-user-info navbar-message navbar-icon-wrapper" href="https://msg.cnblogs.com/" alt="短消息" title="短消息">
+                        <img id="msg_icon" class="navbar-icon" src="/images/aggsite/message.svg?v=oS4PkibyMjZ9rGD5XAcLt99uW_s76Javy2up4dbnZNY" alt="短消息" />
+                        <span id="msg_count" style="display: none"></span>
+                    </a>
+                    <div id="user_info" class="navbar-user-info dropdown">
+                        <a class="dropdown-button" href="https://home.cnblogs.com/">
+                            <img id="user_icon" class="navbar-avatar" src="/images/aggsite/avatar-default.svg" alt="用户头像" />
+                        </a>
+                        <div class="dropdown-menu">
+                            <a id="navblog-myblog-text" href="https://passport.cnblogs.com/GetBlogApplyStatus.aspx">我的博客</a>
+                            <a href="https://home.cnblogs.com/">我的园子</a>
+                            <a href="https://account.cnblogs.com/settings/account">账号设置</a>
+                            <a href="javascript:void(0)" onclick="logout();">退出登录</a>
+                        </div>
+                    </div>
+                    <a class="navbar-anonymous" href="https://account.cnblogs.com/signup/">注册</a>
+                    <a class="navbar-anonymous" href="https://account.cnblogs.com/signin/?returnUrl=https://www.cnblogs.com/">登录</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    
+    <!--done-->
+<div id="header">
+	
+<!--done-->
+<div class="header">
+	<div class="headerText">
+		<a id="Header1_HeaderTitle" class="headermaintitle HeaderMainTitle" href="https://www.cnblogs.com/surprizeFuture/">benzero</a>
+<br>
+		
+
+
+	</div>
+</div>
+
+
+</div>
+
+<div id="mytopmenu">
+	
+		<div id="mylinks">
+<a id="blog_nav_sitehome" class="menu" href="https://www.cnblogs.com/">
+博客园</a>
+ &nbsp;
+
+<a id="blog_nav_myhome" class="menu" href="https://www.cnblogs.com/surprizeFuture/">
+首页</a>
+ &nbsp;
+
+
+<a id="blog_nav_newpost" class="menu" href="https://i.cnblogs.com/EditPosts.aspx?opt=1">
+新随笔</a>
+ &nbsp;
+
+<a id="blog_nav_contact" class="menu" href="https://msg.cnblogs.com/send/benzero">
+联系</a> &nbsp;
+
+<a id="blog_nav_rss" class="menu" href="javascript:void(0)" data-rss="https://www.cnblogs.com/surprizeFuture/rss/">
+订阅</a>
+<a id="blog_nav_rss_image" href="https://www.cnblogs.com/surprizeFuture/rss/">
+    <img src="/skins/sea/images/xml.gif" alt="订阅" />
+</a>&nbsp;
+
+<a id="blog_nav_admin" class="menu" href="https://i.cnblogs.com/">
+管理</a>
+
+
+</div>
+		<DIV id="mystats">随笔 -
+
+11&nbsp;
+文章 -
+
+5&nbsp;
+评论 -
+
+0&nbsp;
+<!--trackbacks-<partial name="./Shared/_PingTrackCount.cshtml" model="BlogServer.Web.Models.DetailBlogPage" />-->
+</DIV>
+	
+</div>
+<div id="centercontent">
+	<div id="post_detail">
+<div class="post">
+	<h1 class = "postTitle">
+<a id="cb_post_title_url" class="postTitle2 vertical-middle" href="https://www.cnblogs.com/surprizeFuture/articles/quartzPlugin.html">
+    <span>quartz插件——实现任务之间的串行调度</span>
+    
+
+
+</a>
+</h1>
+	
+    <div id="cnblogs_post_description" style="display: none">
+        该在已有的quartz 定时任务， 控制这些jobs的执行顺序.
+quartz插件,quartz串行执行job,串行调度
+    </div>
+<div id="cnblogs_post_body" class="blogpost-body">
+    <p>需求背景：</p>
+<p>&nbsp; &nbsp; &nbsp; 目前的项目中大概有二十几个定时任务，在当初实现是只考虑到了阶段之间的结构，即把一个完整过程的几个阶段分成若干个定时任务来实现，不如一个“下载源数据--处理--传给目标”的任务，使用了三个定时任务来实现。 给予三个定时任务相同的处理时间间隔，每个定时任务并没有强制依赖其他任务，主要是在每次运行开始写一些判断代码。 &nbsp; 这种模式一直运行良好，直到遇到一个业务场景——"需求希望整个过程能够尽快的处理完成，对时间要求很敏感"。 &nbsp;这里遇到问题就是我们只能不断加快这些定时任务的频率，但永远解决不了任务之间的错配运行。你无法控制多个任务按照最佳顺序来运行。</p>
+<p>&nbsp;</p>
+<p>最终的解决方案：</p>
+<p>&nbsp; &nbsp; &nbsp;我实现了一个quartz 的插件，利用quartz提供的simpleTrigger特性实现了”任务执行完立即执行其后继任务“的功能， 当然后继任务的概念也是自己引入的，指出一个任务可以有多个后继任务。即支持 A任务运行完毕，立即执行B,也指出A运行完毕，立即执行B和C。 &nbsp;后继任务也可以有自己的后继任务，事实上任务与其后继任务完全是支持自定义的。</p>
+<p>&nbsp;</p>
+<p>quartz有些默认的插件:</p>
+<p>&nbsp; &nbsp; 我用的1.7版本，已经包含4，5个插件， LoggingJobHistoryPlugin，LoggingTriggerHistoryPlugin分别可以打印scheduler容器管理的所有triggers和jobDetails的运行日志。 还有一个插件支持使用xml方式管理trigger&amp;job任务（不同于spring对quartz的封装，但很类似）， 一个是支持scheduler的管理的插件。 不同版本的插件可能会有些差别，这些默认的插件通常是在quartz包的plugin package下。&nbsp;</p>
+<p>&nbsp; &nbsp;quartz插件的实现原理很简单，上面说默认插件的原因也是希望大家随便打开一个默认插件实现，看看源码， 然后就能很快照猫画虎啦。</p>
+<p>自定义的插件实现：</p>
+<p>&nbsp; &nbsp; 事实上，只要你的类继承SchedulerPlugin接口，原理上这个类已经是一个插件了。当然你还需要把这个插件“插”到quartz中，容后在述。</p>
+<p>&nbsp; &nbsp; 因为没有写插件的经历，在实现之前有个问题一直困扰着我："插件要怎么开始运行，执行入口在哪里...", 回过头看大概是被”插件“这个名头吓到蒙了。 简单说，插件本身就是类，让普通类执行其逻辑无法两种方式：1.逻辑的入口写在构造方法里，创建时逻辑即开始执行。 2.逻辑的入口被调用。 我想当时的困扰应该在第二点，要执行插件就要主动调用，那既然都主动调用了，插件还有毛意义... 目前我的观点是这种情况插件的逻辑一般是绑定在一个事件的监听器上的，连起来就是"当某时间发生时，这个插件的逻辑开始执行"。 可以参照quartz 的jobHistory插件</p>
+<p>&nbsp; &nbsp; 回头看SchedulerPlugin接口，简单到发指，将scheduler容器注给你，然后就靠你自己发挥了。 &nbsp;当你把自定义的插件配给quartz时， quartz在容器初始化的后期阶段会实例化你的插件并注册,如果不报错，随即调用initialize()，在容器初始化完成，容器本身启动之后，插件的start()被调用. &nbsp;当quartz的容器销毁时，则会调用shutdown 。</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;<img src="https://images0.cnblogs.com/blog2015/733325/201508/281528296257224.png" alt=""></p>
+<p>&nbsp; &nbsp; &nbsp;我的插件实现：&nbsp;class MultiSerialJobSchPlugin implements SchedulerPlugin,JobListener{}, &nbsp;SchedulerPlugin是插件接口，JobListener则是quartz内置的一个任务执行的监听接口。该接口定义如下图，其三个方法分别是job在即将执行，执行被取消是，执行完毕是被调用。 当然这个监听器监听的对象和范围是要显式的指定和绑定的，这点也容后叙述。 &nbsp;目前我的MultiSerialJobSchPlugin既是一个插件，也是一个监听器。</p>
+<p>&nbsp; &nbsp; &nbsp;&nbsp;<img src="https://images0.cnblogs.com/blog2015/733325/201508/281539452819041.png" alt=""></p>
+<p>&nbsp; &nbsp; &nbsp;那么现在我的类MultiSerialJobSchPlugin已经有如此的潜力”当某些job执行完成后我会立刻得知“。 因为job执行完成后MultiSerialJobSchPlugin.jobExecutionVetoed()方法会被调用。 下面来看具体的实现。</p>
+<p>1. 插件的初始化，三个工作 ，a.保存容器引用，使插件能够随时使用容器的资源和操作容器（如果需要） b:把这个类实例本身当作一个监听器，声明成一个quartz全局的监听，即我监听的范围是quartz管理的所有job。c:把实例保存在scheduler容器里，使外部能通过scheduler.getcontext().get(name)获取实例。 这一步对我这里要实现的功能关系不大，只是推荐做法。</p>
+<p>此处说明下scheduler.getContext(). 它本质上是个map, 这个context是提供给用户使用的，可以将任何想保存的信息放进去scheduler.getcontext().put(key,value)，然后等到使用的时候拿出来scheduler.getcontext().get(key)。因为在容器里，所以里面的信息是全局的，任何时候都能得到的。 后面会看到，我将job之间的执行顺序的定义放在这里，然后给插件使用的。</p>
+<p><img src="https://images0.cnblogs.com/blog2015/733325/201508/281626555478304.png" alt=""></p>
+<p>2.插件启动，实际看代码并没有什么启动操作，还是一些环境/数据的准备，首先解释一个问题，为什么这些准备不统一放到initialize(),而要分布到2个方法中？</p>
+<p>原因是这两个方法被调用的阶段不同， initialise()是在容器初始阶段就被调用的。 所以保险起见，我将数据准备工作放到的容器运行是才被调用的start()里面。</p>
+<p>这个方法2个工作：a. 将jobs之间的关系保存到本地relations对象中，relations的Properties类型，其具体保存了”jobA = JobB,JobC,JobD“(jobA的后继任务是b,c,d)这样的信息. 这些关系信息是通过spring配置文件手工定义的，然后由spring注入到scheduler.context中的，spring注入这一步后面会提到。b.遍历容器，将job和trigger的对应信息保存在插件本地变量jobTriggersMap</p>
+<p><img src="https://images0.cnblogs.com/blog2015/733325/201508/281624193281445.png" alt=""></p>
+<p>3.jobWasExecuted(JobExecutionContext context,JobExecutionException jobException)方法的实现<em id="__mceDel">。</em>前面已经讲到我的插件本身也是一个监听器，并且我已经在第1步把这个监听器的监听范围设为全局的了。 只要在这个方法实现如下步骤：</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;a.通过传入的JobExecutionContext参数获取刚刚执行完毕的那个job的名称</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;b.通过job名称在本地变量relations中查询该job的后继任务，followJobs</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;c.遍历followJobs，对于单个followJob， 在本地变量jobTriggersMap中找到其对应的关联trigger</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 如果为关联，则新建一个simpleTigger（策略是立即执行且只执行一次）；</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; 如果有关联的trigger，如果这些triggers里面由simpleTrigger类型的，记录为st，修改或者替换st,使其触发策略为立即执行且只执行一次</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;d.该方法立即返回，使得quartz 对job的这次调度正常结束。</p>
+<p>&nbsp; &nbsp; &nbsp; &nbsp;e. 其followJob由于simpleTrigger新的策略会立即开始执行，执行完毕后，flowjob也会进入到a-d的步骤，由此一个任务串建立起来</p>
+<p>特别注意：在对followjob绑定新trigger时，一定要是替换或者修改原有的，我实现时用替换。 &nbsp;如果只是简单给他多绑定一个trigger，最后会造成任务执行一次多一个trigger（在1.7版本中 即使simpleTrigger_startNow_repeat0执行完毕后也不会被销毁，至少不会被立即销毁）。</p>
+<p>4. 插件的启动</p>
+<p>&nbsp; &nbsp; 在quartz中，其scheduler容器初始化过程中其实是涉及了多个组件的。比如threadPool，jobstore等， 这些组件quartz都是提供了多个可供选择的，当然也有一套默认的配置，这些信息是在quartz包下的quartz.properties文件中，插件的启动配置也只需配置他就可以了。下图是1.7的默认配置</p>
+<p><img src="https://images0.cnblogs.com/blog2015/733325/201508/281715058127196.png" alt=""></p>
+<p>想要在容器启动时启动插件，只需指定org.quartz.plugin.${pluginName}.class的值即可，比如</p>
+<p>org.quartz.plugin.tiggerHistory.class =&nbsp;org.quartz.plugins.history.LoggingJobHistoryPlugin</p>
+<p>则启动是quartz会加载LoggingJobHistoryPlugin这个插件， 它的功能是打印job运行时的调度日志，非常详细。</p>
+<p>我的配置：其中org.quartz.plugin.MultiSerialJobSch.${propertyname}=${propertyvalue},这个类似spring注入，propertyname是我在MultiSerialJobSch的一个属性，本且实现了其set方法，当然可以配置多个。</p>
+<p>org.quartz.plugin.MultiSerialJobSch.class = com.${我的类包路径}.MultiSerialJobSchPlugin</p>
+<p>org.quartz.plugin.MultiSerialJobSch.relationKey = JobRelationship</p>
+<p>5. 与spring的整合</p>
+<p>&nbsp; &nbsp;其中spring与quartz本身的整合，在我的上一篇文章里有详细的说明。</p>
+<p>&nbsp; &nbsp;这里整合解决的是第2步遗留下来的问题 scheduler.getcontext.get(relationKey), 这里的值是怎么来的，首先relationKey是一个字符串，在上步可以看到我是</p>
+<p>作为变量配置在quartz.properties的，其值是JobRelationship。 下面看我spring 的配置： 在容器factorybean中的schedulerContextAsMap实际上就是spring封装的scheduler.context对象，我注入了一个entity&lt;JobRelationship,Object&gt;。Object本身则是Properties。 至此这些关系信息在spring 启动quartz时，被</p>
+<p>写到scheduler.context中。 然后我的插件如第2步所述，取得这些关系信息。 提供给之后的决策使用。</p>
+<p>&nbsp;<img src="https://images2015.cnblogs.com/blog/733325/201508/733325-20150828173529047-317570474.png" alt=""></p>
+<p><img src="https://images2015.cnblogs.com/blog/733325/201508/733325-20150828174136734-1672379861.png" alt=""></p>
+<p>总结：</p>
+<p>&nbsp; &nbsp; &nbsp;运行过程：定义后继任务概念， 在job本身执行完成后，立即启动后继任务。 其中后继任务概念是由一个property实现的，立即启动后继任务则用simpletrigger和任务动态绑定实现。</p>
+<p>&nbsp; &nbsp; &nbsp;一点感触，其实和这个插件关系不大，在做完这个之后我又用quartz独立实现了一个定时项目（没有用任何的spring），后续也单个研究了rmi,jndi,struts2,终于体会到了spring的致命弱点--它对其他组件封装太完美了, 使得对于新手而言，极易产生quartz，rmi，jndi,hibernate等一离开spring就无法正常使用，无从下手，进而反而影响到新手的学习。 然后网上也充斥着这种情况： 你想查quartz原理，90%的内容都是在spring xml中怎么配置quartz. 这样真的好吗。</p>
+<p>&nbsp; &nbsp; &nbsp;诚然，高手封装了简单易用的东西固然要推荐，可是吾等便是做这行的，如果成长之路太容易真的好么</p>
+<p>&nbsp;</p>
+</div>
+<div id="MySignature"></div>
+<div class="clear"></div>
+<div id="blog_post_info_block">
+    <div id="blog_post_info"></div>
+    <div class="clear"></div>
+    <div id="post_next_prev"></div>
+</div>
+	<div class="postDesc">posted on 
+<span id="post-date">2015-08-28 18:02</span>&nbsp;
+<a href="https://www.cnblogs.com/surprizeFuture/">benzero</a>&nbsp;
+阅读(<span id="post_view_count">8180</span>)&nbsp;
+评论(<span id="post_comment_count">0</span>)&nbsp;
+<a href="https://i.cnblogs.com/EditArticles.aspx?postid=4700103" rel="nofollow">编辑</a>&nbsp;
+<a href="javascript:void(0)" onclick="AddToWz(4700103);return false;">收藏</a></div>
+</div>
+
+
+<script src="https://common.cnblogs.com/highlight/10.3.1/highlight.min.js"></script>
+<script>markdown_highlight();</script>
+<script>
+    var allowComments = true, cb_blogId = 231074, cb_blogApp = 'surprizeFuture', cb_blogUserGuid = '669b018d-1bce-e411-b908-9dcfd8948a71';
+    var cb_entryId = 4700103, cb_entryCreatedDate = '2015-08-28 18:02', cb_postType = 2;
+    loadViewCount(cb_entryId);
+</script>
+<a name="!comments"></a>
+<div id="blog-comments-placeholder"></div>
+<div id="comment_form" class="commentform">
+    <a name="commentform"></a>
+    <div id="divCommentShow"></div>
+    <div id="comment_nav"><span id="span_refresh_tips"></span><a href="javascript:void(0);" onclick="return RefreshCommentList();" id="lnk_RefreshComments" runat="server" clientidmode="Static">刷新评论</a><a href="#" onclick="return RefreshPage();">刷新页面</a><a href="#top">返回顶部</a></div>
+    <div id="comment_form_container"></div>
+    <div class="ad_text_commentbox" id="ad_text_under_commentbox"></div>
+    <div id="ad_t2"></div>
+    <div id="opt_under_post"></div>
+    <div id="cnblogs_c1" class="c_ad_block">
+        <div id='div-gpt-ad-1592365906576-0' style='width: 300px; height: 250px;'></div>
+    </div>
+    <div id="under_post_news"></div>
+    <div id="cnblogs_c2" class="c_ad_block">
+        <div id='div-gpt-ad-1592366332455-0' style='width: 468px; height: 60px;'></div>
+    </div>
+    <div id="under_post_kb"></div>
+    <div id="HistoryToday" class="c_ad_block"></div>
+    <script type="text/javascript">
+       var commentManager = new blogCommentManager();
+       commentManager.renderComments(0);
+       fixPostBody();
+       deliverBigBanner();
+setTimeout(function() { incrementViewCount(cb_entryId); }, 50);       deliverT2();
+       deliverC1C2();
+       loadNewsAndKb();
+       loadBlogSignature();
+LoadPostCategoriesTags(cb_blogId, cb_entryId);       LoadPostInfoBlock(cb_blogId, cb_entryId, cb_blogApp, cb_blogUserGuid);
+       GetPrevNextPost(cb_entryId, cb_blogId, cb_entryCreatedDate, cb_postType);
+       loadOptUnderPost();
+       GetHistoryToday(cb_blogId, cb_blogApp, cb_entryCreatedDate);
+   </script>
+</div>
+
+</div>
+
+
+</div>
+<div id="leftcontent">
+	
+		<DIV id="leftcontentcontainer">
+			<div id="sidebar_news" class="newsItem">
+            <script>loadBlogNews();</script>
+</div>
+<div id="sidebar_ad"></div>
+			<div id="calendar"><div id="blog-calendar" style="display:none"></div></div>                
+                    <script>loadBlogDefaultCalendar();</script><br>
+			<div id="blog-sidecolumn"></div>
+                    <script>loadBlogSideColumn();</script></DIV>
+	
+</div>
+<!--done-->
+<div class="footer">
+	Powered by: <a href="http://www.cnblogs.com">博客园</a>
+	Copyright &copy; 2020 benzero
+<br /><span id="poweredby">Powered by .NET 5.0.0-rc.2.20475.5 on Kubernetes</span>
+
+</div>
+
+
+
+
+
+
+    
+</body>
+</html>
